@@ -1,33 +1,156 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta charset="utf-8">
-	<title>Well Highlighter</title>
-	<script type="text/javascript" src="d3.v5.min.js"></script>
-	<link rel="stylesheet" type="text/css" href="style.css">
+
+<meta charset="utf-8">
+<title>Well Highlighter</title>
+<script type="text/javascript" src="d3.v5.min.js"></script>
+
+<style>
+
+	body {
+		background: black;
+		color: white;
+		font-family: sans-serif;
+	}
+
+	circle {
+		fill: gray;
+	}
+
+	circle.selected {
+		fill: white;
+	}
+	circle.empty {
+		stroke: blue;
+	}
+	circle.filled {
+		stroke: orange;
+	}
+
+	.row-label, .col-label {
+		fill: yellow;
+	}
+
+</style>
+
 </head>
 <body>
 
-<svg id="plate"></svg>
+<table><tr>
+	<td>
+		<svg id="plate" ></svg>
+	</td>
+	<td>
+		<div id="well_list" style="overflow-y:scroll">
+			<table id="well_list"></table>
+		</div>
+	</td>
+</tr></table>
+
+Well: <span id="current_well"></span><br>
+Barcode: <input type="text" id="barcode" onchange="barcode_entered()">
+
+<div id="test"></div>
+
 <script type="text/javascript">
 
-	const wells = 
+	var plate_scaling_factor = 40
+	var selected_well = 0;
+
+	var wells = 
 		d3.range(96).map( function(i) {
 			return {
 				row_num: Math.floor( i / 12 ) + 1,
 				row: String.fromCharCode( 65 + Math.floor( i / 12 ) ),
-				col: i % 12 + 1
+				col: i % 12 + 1,
+				content: ""
 			} } )
 
-	var plate_scaling_factor = 40
-	d3.select( "svg#plate" )
-		.attr( "width", plate_scaling_factor * 12 )
-		.attr( "height", plate_scaling_factor * 8 )
+	update = function() {
+		plateSVG
+			.selectAll( "circle" )
+				.classed( "empty", d => d["content"] == ""  )
+				.classed( "filled", d => d["content"] != ""  )
+				.classed( "selected", ( d, i ) => i == selected_well )
+		table_rows
+			.selectAll( "tr td.well_content" )
+				.text( d => d["content"] )
+		table_rows.select( `tr[well_idx="${selected_well}"] td` ).node().scrollIntoView(
+			alignToTop=false, scrollIntoViewOptions = {behavior: "smooth", block:"nearest"} )
+		d3.select( "span#current_well" )
+			.text( wells[selected_well]["row"] + wells[selected_well]["col"] )
+		d3.select( "input#barcode" )
+			.property( "value", wells[selected_well]["content"] )
+	}
+
+	select_well = function( i ) {
+		selected_well = i
+		update()
+	}
+
+	barcode_entered = function() {
+		wells[selected_well]["content"] = d3.select( "input#barcode" ).property("value")
+		if( selected_well < wells.length )
+			select_well( selected_well + 1 )
+		else
+			update()
+	}
+
+	var plateSVG = d3.select( "svg#plate" )
+			
+	plateSVG
+		.attr( "width", plate_scaling_factor * (12+1) )
+		.attr( "height", plate_scaling_factor * (8+1) )
+	
+	plateSVG
 		.selectAll( "circle" )
 		.data( wells ).enter().append( "circle" )
-			.attr( "cx", d => ( d["col"] - .5 ) * plate_scaling_factor )
-			.attr( "cy", d => ( d["row_num"] - .5 ) * plate_scaling_factor )
+			.attr( "cx", d => ( d["col"] ) * plate_scaling_factor )
+			.attr( "cy", d => ( d["row_num"] ) * plate_scaling_factor )
 			.attr( "r", .4 * plate_scaling_factor )
+			.on( "click", function( d, i ) { select_well( i ) } )
+
+	plateSVG
+		.selectAll( "text.row_label" )
+		.data( d3.range(8) ).enter().append( "text" )
+			.attr( "x", d => 0 )
+			.attr( "y", d => (d+1) * plate_scaling_factor )
+			.attr( "dominant-baseline", "middle" )
+			.text( d => String.fromCharCode( 65 + d ) )
+			.classed( "col-label", true )
+
+	plateSVG
+		.selectAll( "text.col_label" )
+		.data( d3.range(12) ).enter().append( "text" )
+			.attr( "x", d => (d+1) * plate_scaling_factor )
+			.attr( "y", d => 0.3 * plate_scaling_factor )
+			.attr( "text-anchor", "middle" )
+			.text( d => d+1 )
+			.classed( "col-label", true )
+
+	d3.select( "div#well_list")
+		.style( "height", 8 * plate_scaling_factor + "px" )
+
+	var table_rows = 
+	d3.select( "table#well_list")
+		.selectAll( "tr" )
+		.data( wells ).enter().append( "tr" )
+			.attr( "well_idx", ( d, i ) => i );
+
+	table_rows
+		.append( "td" )
+			.classed( "well_pos", true )
+			.text( d => d["row"] + d["col"] )
+	table_rows
+		.append( "td" )
+			.classed( "well_content", true )
+
+	select_well( 0 )
+
+
+
+
 </script>
 </body>
 </html>
