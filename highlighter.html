@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Well Highlighter</title>
+	<script type="text/javascript" src="d3.v5.min.js"></script>
+	<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+
+<svg id="plate"></svg>
+<script type="text/javascript">
+
+	const wells = 
+		d3.range(96).map( function(i) {
+			return {
+				row_num: Math.floor( i / 12 ) + 1,
+				row: String.fromCharCode( 65 + Math.floor( i / 12 ) ),
+				col: i % 12 + 1
+			} } )
+
+	var plate_scaling_factor = 40
+	d3.select( "svg#plate" )
+		.attr( "width", plate_scaling_factor * 12 )
+		.attr( "height", plate_scaling_factor * 8 )
+		.selectAll( "circle" )
+		.data( wells ).enter().append( "circle" )
+			.attr( "cx", d => ( d["col"] - .5 ) * plate_scaling_factor )
+			.attr( "cy", d => ( d["row_num"] - .5 ) * plate_scaling_factor )
+			.attr( "r", .4 * plate_scaling_factor )
+</script>
+</body>
+</html>
