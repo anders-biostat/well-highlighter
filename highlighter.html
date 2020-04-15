@@ -28,8 +28,32 @@
 		stroke: orange;
 	}
 
-	.row-label, .col-label {
+	.row_label, .col_label {
 		fill: yellow;
+	}
+
+	div#well_list {
+		min-width: 200px;
+		border-style: dotted;
+	}
+
+	div#well_list table {
+		margin: 15px;		
+	}
+
+	span#current_well {
+		font-size: 50px
+	}
+
+	input#barcode {
+		background-color: #202020;
+		color: white;
+		border-color: gray;
+		padding: 5px;
+	}
+
+	table#bottom_table td {
+		padding: 30px;
 	}
 
 </style>
@@ -48,8 +72,11 @@
 	</td>
 </tr></table>
 
-Well: <span id="current_well"></span><br>
-Barcode: <input type="text" id="barcode" onchange="barcode_entered()">
+<table id="bottom_table"><tr>
+<td style="vertical-align: center">Well: <span id="current_well"></span></td>
+<td>Barcode: <input type="text" id="barcode" onchange="barcode_entered()"></td>
+<td><button id="save_button">Save</button></td>
+</tr></table>
 
 <div id="test"></div>
 
@@ -87,6 +114,7 @@ Barcode: <input type="text" id="barcode" onchange="barcode_entered()">
 	select_well = function( i ) {
 		selected_well = i
 		update()
+		d3.select("input#barcode").node().focus()
 	}
 
 	barcode_entered = function() {
@@ -108,7 +136,7 @@ Barcode: <input type="text" id="barcode" onchange="barcode_entered()">
 		.data( wells ).enter().append( "circle" )
 			.attr( "cx", d => ( d["col"] ) * plate_scaling_factor )
 			.attr( "cy", d => ( d["row_num"] ) * plate_scaling_factor )
-			.attr( "r", .4 * plate_scaling_factor )
+			.attr( "r", .2 * plate_scaling_factor )
 			.on( "click", function( d, i ) { select_well( i ) } )
 
 	plateSVG
@@ -118,7 +146,7 @@ Barcode: <input type="text" id="barcode" onchange="barcode_entered()">
 			.attr( "y", d => (d+1) * plate_scaling_factor )
 			.attr( "dominant-baseline", "middle" )
 			.text( d => String.fromCharCode( 65 + d ) )
-			.classed( "col-label", true )
+			.classed( "row_label", true )
 
 	plateSVG
 		.selectAll( "text.col_label" )
@@ -127,7 +155,7 @@ Barcode: <input type="text" id="barcode" onchange="barcode_entered()">
 			.attr( "y", d => 0.3 * plate_scaling_factor )
 			.attr( "text-anchor", "middle" )
 			.text( d => d+1 )
-			.classed( "col-label", true )
+			.classed( "col_label", true )
 
 	d3.select( "div#well_list")
 		.style( "height", 8 * plate_scaling_factor + "px" )
