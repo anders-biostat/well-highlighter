@@ -4,7 +4,7 @@
 
 <meta charset="utf-8">
 <title>Well Highlighter</title>
-<script type="text/javascript" src="d3.v5.min.js"></script>
+<script type="text/javascript" src="js/d3.v5.min.js"></script>
 
 <style>
 
@@ -12,12 +12,31 @@
 		background: black;
 		color: white;
 		font-family: sans-serif;
+	}
+
+	h2 {
+		height: 30px;
+		margin: 10px;
 		padding-left: 100px;
 	}
 
 	svg#plate {
-		padding-bottom: 100px;
-		padding-right: 140px;
+		margin: 0px 20px 20px 50px;
+	}
+
+	#plate g rect {
+		stroke: yellow;
+		stroke-width: 1px;
+		fill: none;
+	}
+
+	#container {
+		width: 1265px;
+		height: 670px;
+		margin: 1px;
+		padding: 0px;
+		border: solid 1px white;
+		display: grid;
 	}
 
 	circle {
@@ -40,6 +59,8 @@
 
 	.row_label, .col_label {
 		fill: yellow;
+		font-size: 110%;
+		font-weight: bold;
 	}
 
 	div#well_list {
@@ -52,22 +73,24 @@
 	}
 
 	input#next_barcode {
-		font-size: 30px; 
-		width: 250px;
+		font-size: 20px; 
+		width: 180px;
 		background-color: #202020;
 		color: white;
 		border-color: gray;
 		padding: 5px;
 	}
 
-	button {
+	.button {
 		background-color: darkblue;
 		color: white;
-		padding-top: 10px;
-		padding-bottom: 10px;
-		padding-left: 20px;
-		padding-right: 20px;
-		margin-top: 30px;
+		padding-top: 20px;
+		text-align: center;
+		width: 200px;
+		border: solid 2px white;
+		font-size: 120%;
+		height: 45px;
+		margin-left: 50px;
 	}
 
 
@@ -76,51 +99,58 @@
 </head>
 <body>
 
-<h2 style="padding-bottom: 50px">Well Highlighter</h2>
+<h2>Well Highlighter</h2>
 
-<table><tr>
-	<td>
-		<svg id="plate" ></svg>
-	</td>
-	<td>
-		<div id="well_list" style="overflow-y:scroll">
-			<table id="well_list"></table>
-		</div>
-	</td>
-</tr>
-</table>
-
-<table><tr><td>
-<table id="bottom_table">
-	<tr style="text-align:center">
-		<td></td>
-		<td>Barcode:</td>
-		<td></td>
-		<td>Well:</td>
-	</tr>
-	<tr>
-		<td>current sample:&nbsp;&nbsp;&nbsp;</td>
-		<td style="text-align:center;font-size:30px" id="current_barcode"></td>
-		<td style="text-align:center;font-size:50px">&nbsp;&rarr;&nbsp;</td>
-		<td><span id="current_well" style="font-size: 50px"></span></td>
-	</tr>
-	<tr style="color:#A0A0A0">
-		<td>next sample:</td>
-		<td><input type="text" id="next_barcode" onchange="barcode_entered()"></td>
-		<td style="text-align:center;font-size:50px">&nbsp;&rarr;&nbsp;</td>
-		<td><span id="next_well" style="font-size: 50px"></span></td>
-	</tr>
-	</table>
-</td><td style="padding-left: 150px">
-	<button id="save_button" onclick="save_plate()">Save plate table</button><br>
-	<button id="about_button" onclick="about()" style="font-size: 70%">About Well Highlighter</button>
-</table></td></tr></table>
-
-<div id="test"></div>
+<div id="container">
+	<div style="grid-row: 1/3; grid-column: 1/3">
+		<svg id="plate"></svg>
+	</div>
+	<div id="well_list" style="grid-row: 1; grid-column: 3; overflow-y: scroll;">
+		<table id="well_list"></table>
+	</div>
+	<div class="button" onclick="save_plate();" style="grid-row: 3; grid-column: 1">Save plate table</div>
+	<div class="button" onclick="about();" style="grid-row: 3; grid-column: 2; font-size: 100%">
+		About Well Highlighter
+	</div>
+	<div style="grid-column: 3; grid-row: 2/4">
+		<table id="bottom_table" style="text-align: center;">
+			<tr style="font-weight: bold; font-size: 105%; margin-bottom: 10px">
+				<th>Barcode</th>
+				<th></th>
+				<th>Well</th>
+			</tr>
+			<tr>
+				<td colspan="3">current sample</td>
+			</tr>
+			<tr>
+				<td style="font-size:20px" id="current_barcode"></td>
+				<td style="font-size:35px">&nbsp;&rarr;&nbsp;</td>
+				<td><span id="current_well" style="font-size: 35px"></span></td>
+			</tr>
+			<tr style="color:#A0A0A0">
+				<td colspan="3">next sample</td>
+			</tr>
+			<tr style="color:#A0A0A0">
+				<td><input type="text" id="next_barcode" onchange="barcode_entered()"></td>
+				<td style="font-size:35px">&nbsp;&rarr;&nbsp;</td>
+				<td><span id="next_well" style="font-size: 35px"></span></td>
+			</tr>
+			</table>
+	</div>
+</div>
 
 <script type="text/javascript">
 
-	var plate_scaling_factor = 40
+	var plate_scaling_factor = 226 * 1280 / 1920 / 25.543, //mm to pixels, depends on device
+		//plate measurments in mm
+		plateWidth = 127.76, //751
+		plateHeight = 85.48, //502
+		xOffset = 14.38,
+		yOffset = 11.24,
+		wellR = 3.29,
+		wellSpace = 9,
+		//for labels, in px
+		labelOffset = 50;
 
 	var wells = 
 		d3.range(96).map( function(i) {
@@ -135,7 +165,7 @@
 	var next_well = 0;
 
 	update = function() {
-		plateSVG
+		plateG
 			.selectAll( "circle" )
 				.classed( "empty", d => d["content"] == ""  )
 				.classed( "filled", d => d["content"] != ""  )
@@ -181,41 +211,50 @@
 			next_well = -1
 		update();
 	}
+	var colWidth = Math.ceil((plate_scaling_factor * plateWidth + labelOffset)/2);
+	d3.select("#container")
+		.style("grid-column-template", colWidth + "px " + colWidth + "px 1fr");
 
-	var plateSVG = d3.select( "svg#plate" )
+	var plateG = d3.select( "svg#plate" )
+		.attr( "width", plate_scaling_factor * plateWidth + labelOffset )
+		.attr( "height", plate_scaling_factor * plateHeight + labelOffset )
+		.append("g")
+			.attr("transform", "translate(" + labelOffset + ", " + labelOffset + ")");
+
+	plateG.append("rect")
+		.attr("width", plate_scaling_factor * plateWidth)
+		.attr("height", plate_scaling_factor * plateHeight);
 			
-	plateSVG
-		.attr( "width", plate_scaling_factor * (12+3) )
-		.attr( "height", plate_scaling_factor * (8+3) )
-	
-	plateSVG
+	plateG
 		.selectAll( "circle" )
 		.data( wells ).enter().append( "circle" )
-			.attr( "cx", d => ( 2 + d["col"] ) * plate_scaling_factor )
-			.attr( "cy", d => ( 2 + d["row_num"] ) * plate_scaling_factor )
-			.attr( "r", .2 * plate_scaling_factor )
+			.attr( "cx", d => ( xOffset + (d["col"] - 1) * wellSpace ) * plate_scaling_factor )
+			.attr( "cy", d => ( yOffset + (d["row_num"] - 1)* wellSpace ) * plate_scaling_factor )
+			.attr( "r", wellR * plate_scaling_factor )
 			.on( "click", function( d, i ) { select_well( i ) } )
 
-	plateSVG
+	d3.select( "svg#plate" )
 		.selectAll( "text.row_label" )
 		.data( d3.range(8) ).enter().append( "text" )
-			.attr( "x", d => 0 )
-			.attr( "y", d => (d+3) * plate_scaling_factor )
+			.attr( "x", 0 )
+			.attr( "y", d => ( yOffset + d * wellSpace ) * plate_scaling_factor + labelOffset )
 			.attr( "dominant-baseline", "middle" )
 			.text( d => String.fromCharCode( 65 + d ) )
 			.classed( "row_label", true )
 
-	plateSVG
+	d3.select( "svg#plate" )
 		.selectAll( "text.col_label" )
 		.data( d3.range(12) ).enter().append( "text" )
-			.attr( "x", d => (d+3) * plate_scaling_factor )
-			.attr( "y", d => 0.3 * plate_scaling_factor )
+			.attr( "x", d => ( xOffset + d * wellSpace ) * plate_scaling_factor + labelOffset )
+			.attr( "y", labelOffset )
+			.attr( "dy", -10)
 			.attr( "text-anchor", "middle" )
-			.text( d => d+1 )
+			.text( d => d + 1 )
 			.classed( "col_label", true )
 
 	d3.select( "div#well_list")
-		.style( "height", 8 * plate_scaling_factor + "px" )
+		.style( "height", (plateHeight * plate_scaling_factor + labelOffset - 120)  + "px" )
+		.style( "margin", "10px");
 
 	var table_rows = 
 	d3.select( "table#well_list")

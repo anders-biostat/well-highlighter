@@ -1,0 +1,17 @@
+# Cordova Global
+plugins/
+
+# Android Platform
+platforms/android/.gradle
+platforms/android/build
+platforms/android/assets/www
+platforms/android/local.properties
+platforms/android/CordovaLib/build
+platforms/android/CordovaLib/gen
+platforms/android/CordovaLib/local.properties
+
+# Browser
+platforms/browser/www
+
+node_modules/
+package-lock.json

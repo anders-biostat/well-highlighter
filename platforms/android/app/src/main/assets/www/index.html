@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta charset="utf-8">
+<title>Well Highlighter</title>
+<script type="text/javascript" src="js/d3.v5.min.js"></script>
+
+<style>
+
+	body {
+		background: black;
+		color: white;
+		font-family: sans-serif;
+	}
+
+	h2 {
+		height: 30px;
+		margin: 10px;
+		padding-left: 100px;
+	}
+
+	svg#plate {
+		margin: 0px 20px 20px 50px;
+	}
+
+	#plate g rect {
+		stroke: yellow;
+		stroke-width: 1px;
+		fill: none;
+	}
+
+	#container {
+		width: 1270px;
+		height: 680px;
+		margin: 1px;
+		padding: 0px;
+		border: solid 1px white;
+		display: grid;
+	}
+
+	circle {
+		fill: gray;
+	}
+
+	circle.current {
+		fill: white;
+	}
+	circle.next {
+		fill: gray;
+	}
+
+	circle.empty {
+		stroke: blue;
+	}
+	circle.filled {
+		stroke: orange;
+	}
+
+	.row_label, .col_label {
+		fill: yellow;
+		font-size: 110%;
+		font-weight: bold;
+	}
+
+	div#well_list {
+		min-width: 200px;
+		border-style: dotted;
+	}
+
+	div#well_list table {
+		margin: 15px;		
+	}
+
+	input#next_barcode {
+		font-size: 20px; 
+		width: 180px;
+		background-color: #202020;
+		color: white;
+		border-color: gray;
+		padding: 5px;
+	}
+
+	.button {
+		background-color: darkblue;
+		color: white;
+		padding-top: 20px;
+		text-align: center;
+		width: 200px;
+		border: solid 2px white;
+		font-size: 120%;
+		height: 45px;
+		margin-left: 50px;
+	}
+
+
+</style>
+
+</head>
+<body>
+
+<h2>Well Highlighter</h2>
+
+<div id="container">
+	<div style="grid-row: 1/3; grid-column: 1/3">
+		<svg id="plate"></svg>
+	</div>
+	<div id="well_list" style="grid-row: 1; grid-column: 3; overflow-y: scroll;">
+		<table id="well_list"></table>
+	</div>
+	<div class="button" onclick="save_plate();" style="grid-row: 3; grid-column: 1">Save plate table</div>
+	<div class="button" onclick="about();" style="grid-row: 3; grid-column: 2; font-size: 100%">
+		About Well Highlighter
+	</div>
+	<div style="grid-column: 3; grid-row: 2/4">
+		<table id="bottom_table" style="text-align: center;">
+			<tr style="font-weight: bold; font-size: 105%; margin-bottom: 10px">
+				<th>Barcode</th>
+				<th></th>
+				<th>Well</th>
+			</tr>
+			<tr>
+				<td colspan="3">current sample</td>
+			</tr>
+			<tr>
+				<td style="font-size:20px" id="current_barcode"></td>
+				<td style="font-size:35px">&nbsp;&rarr;&nbsp;</td>
+				<td><span id="current_well" style="font-size: 35px"></span></td>
+			</tr>
+			<tr style="color:#A0A0A0">
+				<td colspan="3">next sample</td>
+			</tr>
+			<tr style="color:#A0A0A0">
+				<td><input type="text" id="next_barcode" onchange="barcode_entered()"></td>
+				<td style="font-size:35px">&nbsp;&rarr;&nbsp;</td>
+				<td><span id="next_well" style="font-size: 35px"></span></td>
+			</tr>
+			</table>
+	</div>
+</div>
+
+<script type="text/javascript">
+
+	var plate_scaling_factor = 226 * 1280 / 1920 / 25.543, //mm to pixels, depends on device
+		//plate measurments in mm
+		plateWidth = 127.76, //751
+		plateHeight = 85.48, //502
+		xOffset = 14.38,
+		yOffset = 11.24,
+		wellR = 3.29,
+		wellSpace = 9,
+		//for labels, in px
+		labelOffset = 50;
+
+	var wells = 
+		d3.range(96).map( function(i) {
+			return {
+				row_num: Math.floor( i / 12 ) + 1,
+				row: String.fromCharCode( 65 + Math.floor( i / 12 ) ),
+				col: i % 12 + 1,
+				content: ""
+			} } )
+
+	var current_well = -1;
+	var next_well = 0;
+
+	update = function() {
+		plateG
+			.selectAll( "circle" )
+				.classed( "empty", d => d["content"] == ""  )
+				.classed( "filled", d => d["content"] != ""  )
+				.classed( "current", ( d, i ) => i == current_well )
+				.classed( "next", ( d, i ) => i == next_well )
+
+		table_rows
+			.selectAll( "tr td.well_content" )
+				.text( d => d["content"] )
+		scroll_to = current_well>-1 ? current_well : next_well
+		if( next_well > -1 ) {
+		   table_rows.select( `tr[well_idx="${scroll_to}"] td` ).node().scrollIntoView(
+			   alignToTop=false, scrollIntoViewOptions = {behavior: "smooth", block:"nearest"} )
+		}
+
+		d3.select( "#current_well" )
+			.text( current_well>-1 ? wells[current_well]["row"] + wells[current_well]["col"] : "––" )
+		d3.select( "#next_well" )
+			.text( next_well>-1 ? wells[next_well]["row"] + wells[next_well]["col"] : "––" )
+
+		d3.select( "#current_barcode" )
+			.text( current_well>-1 ? wells[current_well]["content"] : "" )
+		d3.select( "input#next_barcode" )
+			.property( "value", next_well>-1 ? wells[next_well]["content"] : "" )
+	}
+
+	select_well = function( i ) {
+		current_well = -1
+		next_well = i
+		update()
+		d3.select("input#next_barcode").node().focus()
+	}
+
+	barcode_entered = function() {
+		if( next_well == -1 ) {
+			alert( "End of plate." )
+			return
+		}
+		wells[next_well]["content"] = d3.select( "input#next_barcode" ).property("value")
+		current_well = next_well
+		next_well += 1
+		if( next_well == wells.length )
+			next_well = -1
+		update();
+	}
+	var colWidth = Math.ceil((plate_scaling_factor * plateWidth + labelOffset)/2);
+	d3.select("#container")
+		.style("grid-column-template", colWidth + "px " + colWidth + "px 1fr");
+
+	var plateG = d3.select( "svg#plate" )
+		.attr( "width", plate_scaling_factor * plateWidth + labelOffset )
+		.attr( "height", plate_scaling_factor * plateHeight + labelOffset )
+		.append("g")
+			.attr("transform", "translate(" + labelOffset + ", " + labelOffset + ")");
+
+	plateG.append("rect")
+		.attr("width", plate_scaling_factor * plateWidth)
+		.attr("height", plate_scaling_factor * plateHeight);
+			
+	plateG
+		.selectAll( "circle" )
+		.data( wells ).enter().append( "circle" )
+			.attr( "cx", d => ( xOffset + (d["col"] - 1) * wellSpace ) * plate_scaling_factor )
+			.attr( "cy", d => ( yOffset + (d["row_num"] - 1)* wellSpace ) * plate_scaling_factor )
+			.attr( "r", wellR * plate_scaling_factor )
+			.on( "click", function( d, i ) { select_well( i ) } )
+
+	d3.select( "svg#plate" )
+		.selectAll( "text.row_label" )
+		.data( d3.range(8) ).enter().append( "text" )
+			.attr( "x", 0 )
+			.attr( "y", d => ( yOffset + d * wellSpace ) * plate_scaling_factor + labelOffset )
+			.attr( "dominant-baseline", "middle" )
+			.text( d => String.fromCharCode( 65 + d ) )
+			.classed( "row_label", true )
+
+	d3.select( "svg#plate" )
+		.selectAll( "text.col_label" )
+		.data( d3.range(12) ).enter().append( "text" )
+			.attr( "x", d => ( xOffset + d * wellSpace ) * plate_scaling_factor + labelOffset )
+			.attr( "y", labelOffset )
+			.attr( "dy", -10)
+			.attr( "text-anchor", "middle" )
+			.text( d => d + 1 )
+			.classed( "col_label", true )
+
+	d3.select( "div#well_list")
+		.style( "height", (plateHeight * plate_scaling_factor + labelOffset - 120)  + "px" )
+		.style( "margin", "10px");
+
+	var table_rows = 
+	d3.select( "table#well_list")
+		.selectAll( "tr" )
+		.data( wells ).enter().append( "tr" )
+			.attr( "well_idx", ( d, i ) => i );
+
+	table_rows
+		.append( "td" )
+			.classed( "well_pos", true )
+			.text( d => d["row"] + d["col"] )
+	table_rows
+		.append( "td" )
+			.classed( "well_content", true )
+
+
+	update()
+	d3.select("input#next_barcode").node().focus()
+
+	save_plate = function() {
+
+		lines = wells.map( d => d["row"] + d["col"] + "," + d["content"] ).join( "\n" ) + "\n"
+
+		filename = prompt( "Enter filename (or scan plate barcode)" )
+
+		if( filename == "" )
+			return
+
+		// Code taken from https://ourcodeworld.com/articles/read/189/how-to-create-a-file-and-generate-a-download-with-javascript-in-the-browser-without-a-serve
+		var element = document.createElement('a');
+  		element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent( lines ) );
+  		element.setAttribute('download', filename + ".csv" );
+		element.style.display = 'none';
+  		document.body.appendChild(element);
+		element.click();
+		document.body.removeChild(element);		
+	}
+
+	about = function() {
+		alert( "Well Highlighter\n\nwritten by S. Anders (sanders@fs.tum.de)\nZMBH, Univ Heidelberg, April 2020")
+	}
+
+</script>
+</body>
+</html>
