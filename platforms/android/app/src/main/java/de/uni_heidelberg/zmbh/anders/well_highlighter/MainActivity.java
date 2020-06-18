@@ -17,7 +17,7 @@
        under the License.
  */
 
-package io.cordova.hellocordova;
+package de.uni_heidelberg.zmbh.anders.well_highlighter;
 
 import android.os.Bundle;
 import org.apache.cordova.*;
